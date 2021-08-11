@@ -1,5 +1,7 @@
 package com.adtsw.jdatalayer.annotations;
 
+import com.adtsw.jdatalayer.model.StorageFormat;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -10,4 +12,6 @@ import java.lang.annotation.Target;
 public @interface DBEntityConfiguration {
     
     String setName();
+
+    StorageFormat storageFormat();
 }

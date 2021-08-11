@@ -33,7 +33,7 @@ public class DBAccessObject {
             String entityId = getEntityId(entity);
             TreeMap<String, Object> mappedEntity = JsonUtil.convert(entity, mapTypeReference);
 
-            dbClient.saveEntity(namespace, configs.setName(), entityId, mappedEntity);
+            dbClient.saveEntity(namespace, configs.setName(), entityId, mappedEntity, configs.storageFormat());
 
         } catch (Exception e) {
             throw new RuntimeException("Exception while saving entity", e);
@@ -56,7 +56,7 @@ public class DBAccessObject {
                     dbEntities.put(entityId, mappedEntity);
                 }
 
-                dbClient.saveEntities(namespace, configs.setName(), dbEntities);
+                dbClient.saveEntities(namespace, configs.setName(), dbEntities, configs.storageFormat());
             }
 
         } catch (Exception e) {
@@ -67,7 +67,9 @@ public class DBAccessObject {
     public <T extends DBEntity> T loadEntity(String entityId, Class<T> clazz) {
 
         DBEntityConfiguration configs = clazz.getAnnotation(DBEntityConfiguration.class);
-        Map<String, Object> savedEntity = dbClient.loadEntity(namespace, configs.setName(), entityId);
+        Map<String, Object> savedEntity = dbClient.loadEntity(
+            namespace, configs.setName(), entityId, configs.storageFormat()
+        );
         if(savedEntity == null) return null;
         return JsonUtil.convert(savedEntity, clazz);
     }
