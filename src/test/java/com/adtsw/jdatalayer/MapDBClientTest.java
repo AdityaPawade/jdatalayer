@@ -40,6 +40,8 @@ public class MapDBClientTest {
         dbo.saveEntity(ordersGzip);
         OrdersGzip storedOrdersGzip = dbo.loadEntity("u1", OrdersGzip.class);
         Assert.assertEquals(2, storedOrdersGzip.getOrderItems().size());
+        
+        dbo.shutdown();
     }
 }
 
