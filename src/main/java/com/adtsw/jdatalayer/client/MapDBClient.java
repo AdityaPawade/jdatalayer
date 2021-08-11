@@ -67,11 +67,8 @@ public class MapDBClient implements IDBClient {
             .createOrOpen();
 
         String storedPayload = table.get(entityId);
-
-        storedPayload = decode(storageFormat, storedPayload);
-
-        if(storedPayload == null) return null;
-        return JsonUtil.read(storedPayload, mapTypeReference);
+        storedPayload = storedPayload == null ? null : decode(storageFormat, storedPayload);
+        return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
     }
 
     private String encode(StorageFormat storageFormat, String payload) {

@@ -10,7 +10,7 @@
 
     <groupId>com.adtsw</groupId>
     <artifactId>jdatalayer</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     
     <url>github.com/AdityaPawade/jdatalayer</url>
     <scm>
