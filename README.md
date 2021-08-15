@@ -9,6 +9,7 @@
 
 * [x] Framework for easily connecting services with connectors 
 * [x] Connectors for MapDB
+* [x] Connectors for RocksDB
 
 ### Maven configuration
 
@@ -18,7 +19,7 @@ JDataLayer is available on [Maven Central](http://search.maven.org/#search). You
 <dependency>
   <groupId>com.adtsw</groupId>
   <artifactId>jdatalayer</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
 </dependency>
 ```
 

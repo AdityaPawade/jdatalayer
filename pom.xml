@@ -3,14 +3,21 @@
          xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <packaging>pom</packaging>
 
     <prerequisites>
         <maven>3.0.5</maven>
     </prerequisites>
+    
+    <modules>
+        <module>core</module>
+        <module>mapdb</module>
+        <module>rocksdb</module>
+    </modules>
 
-    <groupId>com.adtsw</groupId>
+    <groupId>com.adtsw.jdatalayer</groupId>
     <artifactId>jdatalayer</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     
     <url>github.com/AdityaPawade/jdatalayer</url>
     <scm>
@@ -66,29 +73,36 @@
             <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.mapdb</groupId>
-            <artifactId>mapdb</artifactId>
-            <version>3.0.8</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.15</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.11</version>
-        </dependency>
-        <dependency>
-            <groupId>com.adtsw</groupId>
-            <artifactId>jcommons</artifactId>
-            <version>1.0.3</version>
-        </dependency>
-    </dependencies>
+    
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>1.15</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.11</version>
+            </dependency>
+            <dependency>
+                <groupId>com.adtsw</groupId>
+                <artifactId>jcommons</artifactId>
+                <version>1.0.3</version>
+            </dependency>
+            <dependency>
+                <groupId>com.adtsw.jdatalayer</groupId>
+                <artifactId>core</artifactId>
+                <version>1.0.3</version>
+            </dependency>
+            <dependency>
+                <groupId>com.adtsw.jdatalayer</groupId>
+                <artifactId>mapdb</artifactId>
+                <version>1.0.3</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
