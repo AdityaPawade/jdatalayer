@@ -72,10 +72,7 @@ public class RocksDBClient extends AbstractDBClient {
 
     private void setMemTableOptions(Options options) {
         options.setMemTableConfig(
-            new HashSkipListMemTableConfig()
-                .setHeight(4)
-                .setBranchingFactor(4)
-                .setBucketCount(2000000));
+            new SkipListMemTableConfig());
     }
 
     private void setBasicOptions(Options options, Statistics stats, int writeBufferSizeKB) {
