@@ -27,10 +27,9 @@ public class RocksDBClient extends AbstractDBClient {
     private final Statistics stats;
     
     public RocksDBClient(String baseStorageLocation, String namespace,
-                         int blockCacheCapacityKB, 
-                         int blockCacheCompressedCapacityKB, 
-                         int rateBytesPerSecond,
-                         int writeBufferSizeKB) {
+                         int blockCacheCapacityKB, int blockCacheCompressedCapacityKB, 
+                         int rateBytesPerSecond, int writeBufferSizeKB, 
+                         CompressionType compressionType, int maxWriteBuffers, int maxBackgroundJobs) {
         
         RocksDB.loadLibrary();
         final Options options = new Options();
@@ -40,7 +39,7 @@ public class RocksDBClient extends AbstractDBClient {
         this.bloomFilter = new BloomFilter(10);
         this.blockCache = new LRUCache(blockCacheCapacityKB * SizeUnit.KB, 6);
         this.blockCacheCompressed = new LRUCache(blockCacheCompressedCapacityKB * SizeUnit.KB, 10);
-        setBasicOptions(options, this.stats, writeBufferSizeKB);
+        setBasicOptions(options, this.stats, writeBufferSizeKB, compressionType, maxWriteBuffers, maxBackgroundJobs);
         setMemTableOptions(options);
         setTableFormatOptions(options, bloomFilter, blockCache, blockCacheCompressed);
 
@@ -75,13 +74,13 @@ public class RocksDBClient extends AbstractDBClient {
             new SkipListMemTableConfig());
     }
 
-    private void setBasicOptions(Options options, Statistics stats, int writeBufferSizeKB) {
-        CompressionType compressionType = CompressionType.SNAPPY_COMPRESSION;
+    private void setBasicOptions(Options options, Statistics stats, int writeBufferSizeKB,
+                                 CompressionType compressionType, int maxWriteBuffers, int maxBackgroundJobs) {
         options.setCreateIfMissing(true)
             .setStatistics(stats)
             .setWriteBufferSize(writeBufferSizeKB * SizeUnit.KB)
-            .setMaxWriteBufferNumber(3)
-            .setMaxBackgroundJobs(10)
+            .setMaxWriteBufferNumber(maxWriteBuffers)
+            .setMaxBackgroundJobs(maxBackgroundJobs)
             .setCompressionType(compressionType)
             .setCompactionStyle(CompactionStyle.UNIVERSAL);
     }

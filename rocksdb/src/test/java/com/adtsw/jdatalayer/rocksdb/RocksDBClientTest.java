@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.junit.Assert;
 import org.junit.Test;
+import org.rocksdb.CompressionType;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,10 +31,14 @@ public class RocksDBClientTest {
         int blockCacheCompressedCapacityKB = 64;
         int rateBytesPerSecond = 10000000;
         int writeBufferSizeKB = 8;
+        CompressionType compressionType = CompressionType.NO_COMPRESSION;
+        int maxWriteBuffers = 3;
+        int maxBackgroundJobs = 10;
 
         RocksDBClient dbClient = new RocksDBClient(
             "/tmp", "test",
-            blockCacheCapacityKB, blockCacheCompressedCapacityKB, rateBytesPerSecond, writeBufferSizeKB
+            blockCacheCapacityKB, blockCacheCompressedCapacityKB, rateBytesPerSecond, writeBufferSizeKB,
+            compressionType, maxWriteBuffers, maxBackgroundJobs
         );
         DBAccessObject dbo = new DBAccessObject(dbClient, "test");
         
