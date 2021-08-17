@@ -36,11 +36,11 @@ public class RocksDBClientTest {
         int maxBackgroundJobs = 10;
 
         RocksDBClient dbClient = new RocksDBClient(
-            "/tmp", "test",
+            "/tmp", "rocksDBTest",
             blockCacheCapacityKB, blockCacheCompressedCapacityKB, rateBytesPerSecond, writeBufferSizeKB,
             compressionType, maxWriteBuffers, maxBackgroundJobs
         );
-        DBAccessObject dbo = new DBAccessObject(dbClient, "test");
+        DBAccessObject dbo = new DBAccessObject(dbClient, "rocksDBTest");
         
         OrdersString ordersString = new OrdersString("u1", orderItems);
         dbo.saveEntity(ordersString);

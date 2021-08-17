@@ -26,8 +26,8 @@ public class MapDBClientTest {
             new Order("o2", "s2", "msg2")
         );
 
-        MapDBClient dbClient = new MapDBClient("/tmp", "test");
-        DBAccessObject dbo = new DBAccessObject(dbClient, "test");
+        MapDBClient dbClient = new MapDBClient("/tmp", "mapDBTest");
+        DBAccessObject dbo = new DBAccessObject(dbClient, "mapDBTest");
         
         OrdersString ordersString = new OrdersString("u1", orderItems);
         dbo.saveEntity(ordersString);
