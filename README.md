@@ -19,7 +19,7 @@ JDataLayer is available on [Maven Central](http://search.maven.org/#search). You
 <dependency>
   <groupId>com.adtsw</groupId>
   <artifactId>jdatalayer</artifactId>
-  <version>1.0.3</version>
+  <version>1.0.5</version>
 </dependency>
 ```
 
