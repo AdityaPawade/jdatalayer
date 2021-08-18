@@ -13,12 +13,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Slf4j
 
 public class RocksDBClient extends AbstractDBClient {
 
     private final Map<String, RocksDB> namespaces;
+    private final Map<String, ReentrantReadWriteLock> locks;
     private final TypeReference<TreeMap<String, Object>> mapTypeReference = new TypeReference<>() {};
     private final ReadOptions readOptions;
     private final Filter bloomFilter;
@@ -47,10 +49,12 @@ public class RocksDBClient extends AbstractDBClient {
         options.setRateLimiter(rateLimiter);
 
         this.namespaces = new HashMap<>();
+        this.locks = new HashMap<>();
         try {
             File baseDir = new File(baseStorageLocation + "/" + namespace);
             RocksDB defaultNamespace = RocksDB.open(options, baseDir.getAbsolutePath());
             this.namespaces.put(namespace, defaultNamespace);
+            this.locks.put(namespace, new ReentrantReadWriteLock());
         } catch (RocksDBException e) {
             log.error("Error initializng RocksDB. Exception: '{}', message: '{}'", e.getCause(), e.getMessage(), e);
             throw new RuntimeException(e);
@@ -91,10 +95,12 @@ public class RocksDBClient extends AbstractDBClient {
         String payload = JsonUtil.write(fields);
         payload = encode(storageFormat, payload);
         try {
+            locks.get(namespace).writeLock().lock();
             namespaces.get(namespace).put(
                 getKey(set, entityId).getBytes(StandardCharsets.UTF_8),
                 payload.getBytes(StandardCharsets.UTF_8)
             );
+            locks.get(namespace).writeLock().unlock();
         } catch (RocksDBException e) {
             log.error("Error saving entry. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
             throw new RuntimeException(e);
@@ -114,9 +120,11 @@ public class RocksDBClient extends AbstractDBClient {
 
         String storedPayload = null;
         try {
+            locks.get(namespace).readLock().lock();
             byte[] storedBytes = namespaces.get(namespace).get(
                 this.readOptions, getKey(set, entityId).getBytes(StandardCharsets.UTF_8)
             );
+            locks.get(namespace).readLock().unlock();
             storedPayload = storedBytes == null ? null : new String(storedBytes, StandardCharsets.UTF_8);
         } catch (RocksDBException e) {
             log.error("Error loading entry. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
@@ -132,10 +140,17 @@ public class RocksDBClient extends AbstractDBClient {
 
     public void shutdown() {
 
-        namespaces.forEach((s, db) -> {
+        namespaces.forEach((namespace, db) -> {
 
-            logger.info("closing RocksDB database " + db);
-            db.close();
+            logger.info("closing RocksDB database " + namespace);
+            try {
+                locks.get(namespace).writeLock().lock();
+                db.syncWal();
+                db.close();
+                locks.get(namespace).writeLock().unlock();
+            } catch (RocksDBException e) {
+                logger.warn("Exception closing RocksDB database " + namespace, e);
+            }
         });
     }
 }
