@@ -17,7 +17,7 @@
 
     <groupId>com.adtsw.jdatalayer</groupId>
     <artifactId>jdatalayer</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
     
     <url>github.com/AdityaPawade/jdatalayer</url>
     <scm>
@@ -97,17 +97,17 @@
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>core</artifactId>
-                <version>1.0.6</version>
+                <version>1.0.7</version>
             </dependency>
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>mapdb</artifactId>
-                <version>1.0.6</version>
+                <version>1.0.7</version>
             </dependency>
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>rocksdb</artifactId>
-                <version>1.0.6</version>
+                <version>1.0.7</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
