@@ -57,6 +57,11 @@ public class RocksDBClientTest {
         OrdersGzip storedOrdersGzip = dbo.loadEntity("u1", OrdersGzip.class);
         Assert.assertEquals(2, storedOrdersGzip.getOrderItems().size());
         
+        RocksDBStats statistics = dbClient.getStatistics();
+        statistics.getStatistics().forEach((key, value) -> {
+            System.out.println(key + " -> " + value);
+        });
+
         dbo.shutdown();
     }
 }

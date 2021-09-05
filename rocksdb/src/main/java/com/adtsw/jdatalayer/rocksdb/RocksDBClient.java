@@ -1,19 +1,41 @@
 package com.adtsw.jdatalayer.rocksdb;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import com.adtsw.jcommons.utils.JsonUtil;
 import com.adtsw.jdatalayer.core.client.AbstractDBClient;
 import com.adtsw.jdatalayer.core.model.StorageFormat;
 import com.fasterxml.jackson.core.type.TypeReference;
-import lombok.extern.slf4j.Slf4j;
-import org.rocksdb.*;
+
+import org.rocksdb.BlockBasedTableConfig;
+import org.rocksdb.BloomFilter;
+import org.rocksdb.Cache;
+import org.rocksdb.CompactionStyle;
+import org.rocksdb.CompressionType;
+import org.rocksdb.Env;
+import org.rocksdb.Filter;
+import org.rocksdb.LRUCache;
+import org.rocksdb.MemoryUsageType;
+import org.rocksdb.MemoryUtil;
+import org.rocksdb.Options;
+import org.rocksdb.RateLimiter;
+import org.rocksdb.ReadOptions;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksDBException;
+import org.rocksdb.SkipListMemTableConfig;
+import org.rocksdb.SstFileManager;
+import org.rocksdb.Statistics;
 import org.rocksdb.util.SizeUnit;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 
@@ -21,12 +43,13 @@ public class RocksDBClient extends AbstractDBClient {
 
     private final Map<String, RocksDB> namespaces;
     private final Map<String, ReentrantReadWriteLock> locks;
+    private final Map<String, Set<Cache>> caches;
+    private final Map<String, ReadOptions> readOptions;
+    private final Map<String, Filter> bloomFilters;
+    private final Map<String, LRUCache> blockCaches;
+    private final Map<String, LRUCache> compressedBlockCaches;
+    private final Map<String, Statistics> stats;
     private final TypeReference<TreeMap<String, Object>> mapTypeReference = new TypeReference<>() {};
-    private final ReadOptions readOptions;
-    private final Filter bloomFilter;
-    private final LRUCache blockCache;
-    private final LRUCache blockCacheCompressed;
-    private final Statistics stats;
     
     public RocksDBClient(String baseStorageLocation, String namespace,
                          int blockCacheCapacityKB, int blockCacheCompressedCapacityKB, 
@@ -35,33 +58,55 @@ public class RocksDBClient extends AbstractDBClient {
                          int maxBackgroundJobs) {
         
         RocksDB.loadLibrary();
+
+        this.namespaces = new HashMap<>();
+        this.locks = new HashMap<>();
+        this.caches = new HashMap<>();
+        this.readOptions = new HashMap<>();
+        this.bloomFilters = new HashMap<>();
+        this.blockCaches = new HashMap<>();
+        this.compressedBlockCaches = new HashMap<>();
+        this.stats = new HashMap<>();
+
         final Options options = new Options();
 
-        this.readOptions = new ReadOptions().setFillCache(false);
-        this.stats = new Statistics();
-        this.bloomFilter = new BloomFilter(10);
-        this.blockCache = new LRUCache(blockCacheCapacityKB * SizeUnit.KB, 6);
-        this.blockCacheCompressed = new LRUCache(blockCacheCompressedCapacityKB * SizeUnit.KB, 10);
+        ReadOptions namespaceReadOptions = new ReadOptions();
+        namespaceReadOptions.setFillCache(false);
+        Statistics namespaceStats = new Statistics();
+        BloomFilter namespaceBloomFilter = new BloomFilter(10);
+        LRUCache namespaceBlockCache = new LRUCache(blockCacheCapacityKB * SizeUnit.KB, 6);
+        LRUCache namespaceBlockCacheCompressed = new LRUCache(blockCacheCompressedCapacityKB * SizeUnit.KB, 10);
+        
+        this.readOptions.put(namespace, namespaceReadOptions);
+        this.stats.put(namespace, namespaceStats);
+        this.bloomFilters.put(namespace, namespaceBloomFilter);
+        this.blockCaches.put(namespace, namespaceBlockCache);
+        this.compressedBlockCaches.put(namespace, namespaceBlockCacheCompressed);
+
         setBasicOptions(
-            options, this.stats,
+            options, namespaceStats,
             maxWriteBuffers, writeBufferSizeKB, maxTotalWalSizeKB,
             compressionType, compactionStyle, maxBackgroundJobs
         );
         setLSMOptions(options);
         setMemTableOptions(options);
-        setTableFormatOptions(options, bloomFilter, blockCache, blockCacheCompressed);
+        setTableFormatOptions(
+            options, namespaceBloomFilter, namespaceBlockCache, namespaceBlockCacheCompressed
+        );
         setFileManagerOptions(maxAllowedSpaceUsageKB, options);
 
         final RateLimiter rateLimiter = new RateLimiter(rateBytesPerSecond,10000, 10);
         options.setRateLimiter(rateLimiter);
 
-        this.namespaces = new HashMap<>();
-        this.locks = new HashMap<>();
         try {
             File baseDir = new File(baseStorageLocation + "/" + namespace);
             RocksDB defaultNamespace = RocksDB.open(options, baseDir.getAbsolutePath());
             this.namespaces.put(namespace, defaultNamespace);
             this.locks.put(namespace, new ReentrantReadWriteLock());
+            Set<Cache> namespaceCaches = new HashSet<Cache>();
+            namespaceCaches.add(namespaceBlockCache);
+            namespaceCaches.add(namespaceBlockCacheCompressed);
+            this.caches.put(namespace, namespaceCaches);
         } catch (RocksDBException e) {
             log.error("Error initializng RocksDB. Exception: '{}', message: '{}'", e.getCause(), e.getMessage(), e);
             throw new RuntimeException(e);
@@ -116,29 +161,39 @@ public class RocksDBClient extends AbstractDBClient {
     }
 
     /*
-    --rocksdb.num-levels
-    The number of levels for the database in the LSM tree. Default: 7.
-    
-    --rocksdb.num-uncompressed-levels
-    The number of levels that do not use compression. The default value is 2. Levels above this number will use Snappy compression to reduce the disk space requirements for storing data in these levels.
-    
-    --rocksdb.dynamic-level-bytes
-    If true, the amount of data in each level of the LSM tree is determined dynamically so as to minimize the space amplification; otherwise, the level sizes are fixed. The dynamic sizing allows RocksDB to maintain a well-structured LSM tree regardless of total data size. Default: true.
-    
-    --rocksdb.max-bytes-for-level-base
-    The maximum total data size in bytes in level-1 of the LSM tree. Only effective if --rocksdb.dynamic-level-bytes is false. Default: 256MiB.
-    
-    --rocksdb.max-bytes-for-level-multiplier
-    The maximum total data size in bytes for level L of the LSM tree can be calculated as max-bytes-for-level-base * (max-bytes-for-level-multiplier ^ (L-1)). Only effective if --rocksdb.dynamic-level-bytes is false. Default: 10.
-    
-    --rocksdb.level0-compaction-trigger
-    Compaction of level-0 to level-1 is triggered when this many files exist in level-0. Setting this to a higher number may help bulk writes at the expense of slowing down reads. Default: 2.
-    
-    --rocksdb.level0-slowdown-trigger
-    When this many files accumulate in level-0, writes will be slowed down to --rocksdb.delayed-write-rate to allow compaction to catch up. Default: 20.
-    
-    --rocksdb.level0-stop-trigger
-    When this many files accumulate in level-0, writes will be stopped to allow compaction to catch up. Default: 36.
+     * --rocksdb.num-levels The number of levels for the database in the LSM tree.
+     * Default: 7.
+     * 
+     * --rocksdb.num-uncompressed-levels The number of levels that do not use
+     * compression. The default value is 2. Levels above this number will use Snappy
+     * compression to reduce the disk space requirements for storing data in these
+     * levels.
+     * 
+     * --rocksdb.dynamic-level-bytes If true, the amount of data in each level of
+     * the LSM tree is determined dynamically so as to minimize the space
+     * amplification; otherwise, the level sizes are fixed. The dynamic sizing
+     * allows RocksDB to maintain a well-structured LSM tree regardless of total
+     * data size. Default: true.
+     * 
+     * --rocksdb.max-bytes-for-level-base The maximum total data size in bytes in
+     * level-1 of the LSM tree. Only effective if --rocksdb.dynamic-level-bytes is
+     * false. Default: 256MiB.
+     * 
+     * --rocksdb.max-bytes-for-level-multiplier The maximum total data size in bytes
+     * for level L of the LSM tree can be calculated as max-bytes-for-level-base *
+     * (max-bytes-for-level-multiplier ^ (L-1)). Only effective if
+     * --rocksdb.dynamic-level-bytes is false. Default: 10.
+     * 
+     * --rocksdb.level0-compaction-trigger Compaction of level-0 to level-1 is
+     * triggered when this many files exist in level-0. Setting this to a higher
+     * number may help bulk writes at the expense of slowing down reads. Default: 2.
+     * 
+     * --rocksdb.level0-slowdown-trigger When this many files accumulate in level-0,
+     * writes will be slowed down to --rocksdb.delayed-write-rate to allow
+     * compaction to catch up. Default: 20.
+     * 
+     * --rocksdb.level0-stop-trigger When this many files accumulate in level-0,
+     * writes will be stopped to allow compaction to catch up. Default: 36.
      */
     private void setLSMOptions(Options options) {
         options.setNumLevels(7)
@@ -189,7 +244,7 @@ public class RocksDBClient extends AbstractDBClient {
         try {
             locks.get(namespace).readLock().lock();
             byte[] storedBytes = namespaces.get(namespace).get(
-                this.readOptions, getKey(set, entityId).getBytes(StandardCharsets.UTF_8)
+                this.readOptions.get(namespace), getKey(set, entityId).getBytes(StandardCharsets.UTF_8)
             );
             locks.get(namespace).readLock().unlock();
             storedPayload = storedBytes == null ? null : new String(storedBytes, StandardCharsets.UTF_8);
@@ -205,6 +260,24 @@ public class RocksDBClient extends AbstractDBClient {
         return set + "$$" + entityId;
     }
 
+    public RocksDBStats getStatistics() {
+
+        RocksDBStats dbStats = new RocksDBStats();
+        namespaces.forEach((namespace, db) -> {
+
+            Map<MemoryUsageType, Long> memoryUsage = MemoryUtil.getApproximateMemoryUsageByType(
+                Arrays.asList(db), caches.get(namespace)
+            );
+
+            dbStats.add(namespace + "_kMemTableTotal", memoryUsage.get(MemoryUsageType.kMemTableTotal));
+            dbStats.add(namespace + "_kMemTableUnFlushed", memoryUsage.get(MemoryUsageType.kMemTableUnFlushed));
+            dbStats.add(namespace + "_kCacheTotal", memoryUsage.get(MemoryUsageType.kCacheTotal));
+            dbStats.add(namespace + "_kTableReadersTotal", memoryUsage.get(MemoryUsageType.kTableReadersTotal));
+            dbStats.add(namespace + "_kNumUsageTypes", memoryUsage.get(MemoryUsageType.kNumUsageTypes));
+        });
+        return dbStats;
+    }
+
     public void shutdown() {
 
         namespaces.forEach((namespace, db) -> {
@@ -213,11 +286,13 @@ public class RocksDBClient extends AbstractDBClient {
             try {
                 locks.get(namespace).writeLock().lock();
                 db.syncWal();
+                this.readOptions.get(namespace).close();
                 db.close();
                 locks.get(namespace).writeLock().unlock();
             } catch (RocksDBException e) {
                 logger.warn("Exception closing RocksDB database " + namespace, e);
             }
         });
+
     }
 }
