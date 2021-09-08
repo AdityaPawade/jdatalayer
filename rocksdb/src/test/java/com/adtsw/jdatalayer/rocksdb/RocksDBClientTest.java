@@ -3,6 +3,7 @@ package com.adtsw.jdatalayer.rocksdb;
 import com.adtsw.jdatalayer.core.accessobject.DBAccessObject;
 import com.adtsw.jdatalayer.core.annotations.DBEntityConfiguration;
 import com.adtsw.jdatalayer.core.annotations.EntityId;
+import com.adtsw.jdatalayer.core.client.DBStats;
 import com.adtsw.jdatalayer.core.model.DBEntity;
 import com.adtsw.jdatalayer.core.model.StorageFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -30,6 +31,7 @@ public class RocksDBClientTest {
 
         int blockCacheCapacityKB = 64;
         int blockCacheCompressedCapacityKB = 64;
+        int rowCacheCapacityKB = 64;
         int rateBytesPerSecond = 10000000;
         int writeBufferSizeKB = 8;
         CompressionType compressionType = CompressionType.NO_COMPRESSION;
@@ -41,7 +43,7 @@ public class RocksDBClientTest {
 
         RocksDBClient dbClient = new RocksDBClient(
             "/tmp", "rocksDBTest",
-            blockCacheCapacityKB, blockCacheCompressedCapacityKB, rateBytesPerSecond, 
+            blockCacheCapacityKB, blockCacheCompressedCapacityKB, rowCacheCapacityKB, rateBytesPerSecond, 
             maxWriteBuffers, writeBufferSizeKB, maxTotalWalSizeKB,
             compressionType, compactionStyle, maxAllowedSpaceUsageKB, maxBackgroundJobs
         );
@@ -57,7 +59,7 @@ public class RocksDBClientTest {
         OrdersGzip storedOrdersGzip = dbo.loadEntity("u1", OrdersGzip.class);
         Assert.assertEquals(2, storedOrdersGzip.getOrderItems().size());
         
-        RocksDBStats statistics = dbClient.getStatistics();
+        DBStats statistics = dbClient.getStatistics();
         statistics.getStatistics().forEach((key, value) -> {
             System.out.println(key + " -> " + value);
         });

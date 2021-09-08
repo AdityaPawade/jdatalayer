@@ -15,11 +15,22 @@
 
 JDataLayer is available on [Maven Central](http://search.maven.org/#search). You just have to add the following dependency in your `pom.xml` file.
 
+For RocksDB
+
 ```xml
 <dependency>
-  <groupId>com.adtsw</groupId>
-  <artifactId>jdatalayer</artifactId>
-  <version>1.0.7</version>
+  <groupId>com.adtsw.jdatalayer</groupId>
+  <artifactId>rocksdb</artifactId>
+  <version>1.0.8</version>
+</dependency>
+```
+For MapDB
+
+```xml
+<dependency>
+  <groupId>com.adtsw.jdatalayer</groupId>
+  <artifactId>mapdb</artifactId>
+  <version>1.0.8</version>
 </dependency>
 ```
 
@@ -33,8 +44,8 @@ For ***snapshots***, add the following repository to your `pom.xml` file.
 The ***snapshot version*** has not been released yet.
 ```xml
 <dependency>
-  <groupId>com.adtsw</groupId>
-  <artifactId>jdatalayer</artifactId>
+  <groupId>com.adtsw.jdatalayer</groupId>
+  <artifactId>rocksdb</artifactId>
   <version>TBD</version>
 </dependency>
 ```

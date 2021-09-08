@@ -1,20 +1,22 @@
 package com.adtsw.jdatalayer.mapdb;
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+
 import com.adtsw.jcommons.utils.JsonUtil;
 import com.adtsw.jdatalayer.core.client.AbstractDBClient;
+import com.adtsw.jdatalayer.core.client.DBStats;
 import com.adtsw.jdatalayer.core.model.StorageFormat;
 import com.fasterxml.jackson.core.type.TypeReference;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
 
 public class MapDBClient extends AbstractDBClient {
 
@@ -67,6 +69,13 @@ public class MapDBClient extends AbstractDBClient {
         String storedPayload = table.get(entityId);
         storedPayload = storedPayload == null ? null : decode(storageFormat, storedPayload);
         return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
+    }
+
+    @Override
+    public DBStats getStatistics() {
+
+        DBStats dbStats = new DBStats();
+        return dbStats;
     }
 
     public void shutdown() {

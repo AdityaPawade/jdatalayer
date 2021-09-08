@@ -12,6 +12,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.adtsw.jcommons.utils.JsonUtil;
 import com.adtsw.jdatalayer.core.client.AbstractDBClient;
+import com.adtsw.jdatalayer.core.client.DBStats;
 import com.adtsw.jdatalayer.core.model.StorageFormat;
 import com.fasterxml.jackson.core.type.TypeReference;
 
@@ -43,17 +44,18 @@ public class RocksDBClient extends AbstractDBClient {
 
     private final Map<String, RocksDB> namespaces;
     private final Map<String, ReentrantReadWriteLock> locks;
-    private final Map<String, Set<Cache>> caches;
     private final Map<String, ReadOptions> readOptions;
     private final Map<String, Filter> bloomFilters;
     private final Map<String, LRUCache> blockCaches;
     private final Map<String, LRUCache> compressedBlockCaches;
+    private final Map<String, LRUCache> rowCaches;
     private final Map<String, Statistics> stats;
     private final TypeReference<TreeMap<String, Object>> mapTypeReference = new TypeReference<>() {};
     
     public RocksDBClient(String baseStorageLocation, String namespace,
-                         int blockCacheCapacityKB, int blockCacheCompressedCapacityKB, 
-                         int rateBytesPerSecond, int maxWriteBuffers, int writeBufferSizeKB, int maxTotalWalSizeKB,
+                         int blockCacheCapacityKB, int blockCacheCompressedCapacityKB,
+                         int rowCacheCapacityKB, int rateBytesPerSecond, 
+                         int maxWriteBuffers, int writeBufferSizeKB, int maxTotalWalSizeKB,
                          CompressionType compressionType, CompactionStyle compactionStyle, int maxAllowedSpaceUsageKB,
                          int maxBackgroundJobs) {
         
@@ -61,11 +63,11 @@ public class RocksDBClient extends AbstractDBClient {
 
         this.namespaces = new HashMap<>();
         this.locks = new HashMap<>();
-        this.caches = new HashMap<>();
         this.readOptions = new HashMap<>();
         this.bloomFilters = new HashMap<>();
         this.blockCaches = new HashMap<>();
         this.compressedBlockCaches = new HashMap<>();
+        this.rowCaches = new HashMap<>();
         this.stats = new HashMap<>();
 
         final Options options = new Options();
@@ -74,14 +76,16 @@ public class RocksDBClient extends AbstractDBClient {
         namespaceReadOptions.setFillCache(false);
         Statistics namespaceStats = new Statistics();
         BloomFilter namespaceBloomFilter = new BloomFilter(10);
-        LRUCache namespaceBlockCache = new LRUCache(blockCacheCapacityKB * SizeUnit.KB, 6);
+        LRUCache namespaceBlockCache = new LRUCache(blockCacheCapacityKB * SizeUnit.KB, 10);
         LRUCache namespaceBlockCacheCompressed = new LRUCache(blockCacheCompressedCapacityKB * SizeUnit.KB, 10);
+        LRUCache namespaceRowCache = new LRUCache(rowCacheCapacityKB * SizeUnit.KB, 10);
         
         this.readOptions.put(namespace, namespaceReadOptions);
         this.stats.put(namespace, namespaceStats);
         this.bloomFilters.put(namespace, namespaceBloomFilter);
         this.blockCaches.put(namespace, namespaceBlockCache);
         this.compressedBlockCaches.put(namespace, namespaceBlockCacheCompressed);
+        this.rowCaches.put(namespace, namespaceRowCache);
 
         setBasicOptions(
             options, namespaceStats,
@@ -90,29 +94,28 @@ public class RocksDBClient extends AbstractDBClient {
         );
         setLSMOptions(options);
         setMemTableOptions(options);
-        setTableFormatOptions(
-            options, namespaceBloomFilter, namespaceBlockCache, namespaceBlockCacheCompressed
-        );
+        setTableFormatOptions(options, namespaceBloomFilter, namespaceBlockCache, namespaceBlockCacheCompressed);
         setFileManagerOptions(maxAllowedSpaceUsageKB, options);
-
-        final RateLimiter rateLimiter = new RateLimiter(rateBytesPerSecond,10000, 10);
-        options.setRateLimiter(rateLimiter);
+        setRateLimitOptions(rateBytesPerSecond, options);
+        setRowCacheOptions(options, namespaceRowCache);
 
         try {
             File baseDir = new File(baseStorageLocation + "/" + namespace);
             RocksDB defaultNamespace = RocksDB.open(options, baseDir.getAbsolutePath());
             this.namespaces.put(namespace, defaultNamespace);
             this.locks.put(namespace, new ReentrantReadWriteLock());
-            Set<Cache> namespaceCaches = new HashSet<Cache>();
-            namespaceCaches.add(namespaceBlockCache);
-            namespaceCaches.add(namespaceBlockCacheCompressed);
-            this.caches.put(namespace, namespaceCaches);
         } catch (RocksDBException e) {
             log.error("Error initializng RocksDB. Exception: '{}', message: '{}'", e.getCause(), e.getMessage(), e);
             throw new RuntimeException(e);
         }
     }
 
+    /**
+     * TableFormatConfig is used to config the internal Table format of a RocksDB.
+     * To make a RocksDB to use a specific Table format, its associated
+     * TableFormatConfig should be properly set and passed into Options via
+     * Options.setTableFormatConfig() and open the db using that Options.
+     */
     private void setTableFormatOptions(Options options, 
                                        Filter bloomFilter, LRUCache blockCache, LRUCache blockCacheCompressed) {
     
@@ -125,26 +128,47 @@ public class RocksDBClient extends AbstractDBClient {
             .setBlockCacheCompressed(blockCacheCompressed));
     }
 
+    private void setRowCacheOptions(Options options, Cache rowCache) {
+        options.setRowCache(rowCache);
+    }
+
+    /**
+     * MemTableConfig is used to config the internal mem-table of a RocksDB. It is
+     * required for each memtable to have one such sub-class to allow Java
+     * developers to use it.
+     *
+     * To make a RocksDB to use a specific MemTable format, its associated
+     * MemTableConfig should be properly set and passed into Options via
+     * Options.setMemTableFactory() and open the db using that Options.
+     */
     private void setMemTableOptions(Options options) {
         options.setMemTableConfig(
             new SkipListMemTableConfig());
     }
 
     /*
-    --rocksdb.write-buffer-size
-    The amount of data to build up in each in-memory buffer (backed by a log file) before closing the buffer and queuing it to be flushed into standard storage. Default: 64MiB. Larger values may improve performance, especially for bulk loads.
-    
-    --rocksdb.max-write-buffer-number
-    The maximum number of write buffers that built up in memory. If this number is reached before the buffers can be flushed, writes will be slowed or stalled. Default: 2.
-    
-    --rocksdb.min-write-buffer-number-to-merge
-    Minimum number of write buffers that will be merged together when flushing to normal storage. Default: 1.
-    
-    --rocksdb.max-total-wal-size
-    Maximum total size of WAL files that, when reached, will force a flush of all column families whose data is backed by the oldest WAL files. Setting this to a low value will trigger regular flushing of column family data from memtables, so that WAL files can be moved to the archive. Setting this to a high value will avoid regular flushing but may prevent WAL files from being moved to the archive and being removed.
-    
-    --rocksdb.delayed-write-rate (Hidden)
-    Limited write rate to DB (in bytes per second) if we are writing to the last in-memory buffer allowed and we allow more than 3 buffers. Default: 16MiB/s.
+     * --rocksdb.write-buffer-size The amount of data to build up in each in-memory
+     * buffer (backed by a log file) before closing the buffer and queuing it to be
+     * flushed into standard storage. Default: 64MiB. Larger values may improve
+     * performance, especially for bulk loads.
+     * 
+     * --rocksdb.max-write-buffer-number The maximum number of write buffers that
+     * built up in memory. If this number is reached before the buffers can be
+     * flushed, writes will be slowed or stalled. Default: 2.
+     * 
+     * --rocksdb.min-write-buffer-number-to-merge Minimum number of write buffers
+     * that will be merged together when flushing to normal storage. Default: 1.
+     * 
+     * --rocksdb.max-total-wal-size Maximum total size of WAL files that, when
+     * reached, will force a flush of all column families whose data is backed by
+     * the oldest WAL files. Setting this to a low value will trigger regular
+     * flushing of column family data from memtables, so that WAL files can be moved
+     * to the archive. Setting this to a high value will avoid regular flushing but
+     * may prevent WAL files from being moved to the archive and being removed.
+     * 
+     * --rocksdb.delayed-write-rate (Hidden) Limited write rate to DB (in bytes per
+     * second) if we are writing to the last in-memory buffer allowed and we allow
+     * more than 3 buffers. Default: 16MiB/s.
      */
     private void setBasicOptions(Options options, Statistics stats,
                                  int maxWriteBuffers, int writeBufferSizeKB, int maxTotalWalSizeKB,
@@ -198,7 +222,8 @@ public class RocksDBClient extends AbstractDBClient {
     private void setLSMOptions(Options options) {
         options.setNumLevels(7)
             .setLevel0FileNumCompactionTrigger(2)
-            .setLevel0SlowdownWritesTrigger(2);
+            .setLevel0SlowdownWritesTrigger(10)
+            .setLevel0StopWritesTrigger(36);
     }
 
     private void setFileManagerOptions(long maxAllowedSpaceUsageKB, Options options) {
@@ -209,6 +234,11 @@ public class RocksDBClient extends AbstractDBClient {
         } catch (RocksDBException e) {
             log.error("Error setting file manager options. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
         }
+    }
+
+    private void setRateLimitOptions(int rateBytesPerSecond, final Options options) {
+        final RateLimiter rateLimiter = new RateLimiter(rateBytesPerSecond,10000, 10);
+        options.setRateLimiter(rateLimiter);
     }
 
     public void saveEntity(String namespace, String set, String entityId, Map<String, Object> fields,
@@ -260,22 +290,55 @@ public class RocksDBClient extends AbstractDBClient {
         return set + "$$" + entityId;
     }
 
-    public RocksDBStats getStatistics() {
+    @Override
+    public DBStats getStatistics() {
 
-        RocksDBStats dbStats = new RocksDBStats();
+        DBStats dbStats = new DBStats();
         namespaces.forEach((namespace, db) -> {
+            
+            addDBMetrics(dbStats, namespace, db);
 
-            Map<MemoryUsageType, Long> memoryUsage = MemoryUtil.getApproximateMemoryUsageByType(
-                Arrays.asList(db), caches.get(namespace)
-            );
+            LRUCache namespaceCache = this.blockCaches.get(namespace);
+            addCacheMetrics(dbStats, namespace, db, "block_cache", namespaceCache);
 
-            dbStats.add(namespace + "_kMemTableTotal", memoryUsage.get(MemoryUsageType.kMemTableTotal));
-            dbStats.add(namespace + "_kMemTableUnFlushed", memoryUsage.get(MemoryUsageType.kMemTableUnFlushed));
-            dbStats.add(namespace + "_kCacheTotal", memoryUsage.get(MemoryUsageType.kCacheTotal));
-            dbStats.add(namespace + "_kTableReadersTotal", memoryUsage.get(MemoryUsageType.kTableReadersTotal));
-            dbStats.add(namespace + "_kNumUsageTypes", memoryUsage.get(MemoryUsageType.kNumUsageTypes));
+            LRUCache namespaceCompressedCache = this.compressedBlockCaches.get(namespace);
+            addCacheMetrics(dbStats, namespace, db, "compressed_block_cache", namespaceCompressedCache);
+
+            LRUCache namespaceRowCache = this.rowCaches.get(namespace);
+            addCacheMetrics(dbStats, namespace, db, "row_cache", namespaceRowCache);
         });
         return dbStats;
+    }
+
+    private void addDBMetrics(DBStats dbStats, String namespace, RocksDB db) {
+
+        Map<MemoryUsageType, Long> memoryUsage = MemoryUtil.getApproximateMemoryUsageByType(
+            Arrays.asList(db), new HashSet<Cache>()
+        );
+
+        Long kMemTableTotal = memoryUsage.get(MemoryUsageType.kMemTableTotal);
+        Long kMemTableUnFlushed = memoryUsage.get(MemoryUsageType.kMemTableUnFlushed);
+        Long kTableReadersTotal = memoryUsage.get(MemoryUsageType.kTableReadersTotal);
+        // Long kNumUsageTypes = memoryUsage.get(MemoryUsageType.kNumUsageTypes);
+        dbStats.add(namespace + "_kMemTableTotal", kMemTableTotal / 1024L);
+        dbStats.add(namespace + "_kMemTableUnFlushed", kMemTableUnFlushed / 1024L);
+        dbStats.add(namespace + "_kTableReadersTotal", kTableReadersTotal / 1024L);
+        // dbStats.add(namespace + "_kNumUsageTypes", kNumUsageTypes);
+    }
+
+    private void addCacheMetrics(DBStats dbStats, String namespace, RocksDB db, String cacheName,
+            LRUCache namespaceCache) {
+
+        Set<Cache> namespaceCaches = new HashSet<Cache>();
+        namespaceCaches.add(namespaceCache);
+        Map<MemoryUsageType, Long> memoryUsage = MemoryUtil.getApproximateMemoryUsageByType(
+            Arrays.asList(), namespaceCaches
+        );
+
+        Long kCacheTotal = memoryUsage.get(MemoryUsageType.kCacheTotal);
+        dbStats.add(namespace + "_" + cacheName + "_kCacheTotal", kCacheTotal / 1024L);
+        // dbStats.add(namespace + "_" + cacheName + "_memUsage", namespaceCache.getUsage() / 1024L);
+        // dbStats.add(namespace + "_" + cacheName + "_pinnedMemUsage", namespaceCache.getPinnedUsage() / 1024L);
     }
 
     public void shutdown() {

@@ -14,5 +14,7 @@ public interface IDBClient {
 
     Map<String, Object> loadEntity(String namespace, String set, String entityId, StorageFormat storageFormat);
 
+    DBStats getStatistics();
+    
     void shutdown();
 }

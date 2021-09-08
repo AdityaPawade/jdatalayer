@@ -1,16 +1,16 @@
-package com.adtsw.jdatalayer.rocksdb;
+package com.adtsw.jdatalayer.core.client;
 
 import java.util.Map;
 import java.util.TreeMap;
 
 import lombok.Getter;
 
-public class RocksDBStats {
+public class DBStats {
     
     @Getter
     private final Map<String, Long> statistics;
 
-    public RocksDBStats() {
+    public DBStats() {
         this.statistics = new TreeMap<>();
     }
     
