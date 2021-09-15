@@ -1,20 +1,15 @@
 package com.adtsw.jdatalayer.rocksdb;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import com.adtsw.jcommons.utils.JsonUtil;
 import com.adtsw.jdatalayer.core.client.AbstractDBClient;
 import com.adtsw.jdatalayer.core.client.DBStats;
-import com.adtsw.jdatalayer.core.model.StorageFormat;
-import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.BloomFilter;
@@ -34,36 +29,38 @@ import org.rocksdb.RocksDBException;
 import org.rocksdb.SkipListMemTableConfig;
 import org.rocksdb.SstFileManager;
 import org.rocksdb.Statistics;
+import org.rocksdb.WriteOptions;
 import org.rocksdb.util.SizeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 
-public class RocksDBClient extends AbstractDBClient {
+public abstract class RocksDBClient extends AbstractDBClient {
 
     private final Map<String, RocksDB> namespaces;
     private final Map<String, ReentrantReadWriteLock> locks;
     private final Map<String, ReadOptions> readOptions;
+    private final Map<String, WriteOptions> writeOptions;
     private final Map<String, Filter> bloomFilters;
     private final Map<String, LRUCache> blockCaches;
     private final Map<String, LRUCache> compressedBlockCaches;
     private final Map<String, LRUCache> rowCaches;
     private final Map<String, Statistics> stats;
-    private final TypeReference<TreeMap<String, Object>> mapTypeReference = new TypeReference<>() {};
     
     public RocksDBClient(String baseStorageLocation, String namespace,
                          int blockCacheCapacityKB, int blockCacheCompressedCapacityKB,
                          int rowCacheCapacityKB, int rateBytesPerSecond, 
                          int maxWriteBuffers, int writeBufferSizeKB, int maxTotalWalSizeKB,
                          CompressionType compressionType, CompactionStyle compactionStyle, int maxAllowedSpaceUsageKB,
-                         int maxBackgroundJobs) {
+                         int maxBackgroundJobs, boolean fillReadCache, boolean disableWAL) {
         
         RocksDB.loadLibrary();
 
         this.namespaces = new HashMap<>();
         this.locks = new HashMap<>();
         this.readOptions = new HashMap<>();
+        this.writeOptions = new HashMap<>();
         this.bloomFilters = new HashMap<>();
         this.blockCaches = new HashMap<>();
         this.compressedBlockCaches = new HashMap<>();
@@ -73,7 +70,7 @@ public class RocksDBClient extends AbstractDBClient {
         final Options options = new Options();
 
         ReadOptions namespaceReadOptions = new ReadOptions();
-        namespaceReadOptions.setFillCache(false);
+        WriteOptions namespaceWriteOptions = new WriteOptions();
         Statistics namespaceStats = new Statistics();
         BloomFilter namespaceBloomFilter = new BloomFilter(10);
         LRUCache namespaceBlockCache = new LRUCache(blockCacheCapacityKB * SizeUnit.KB, 10);
@@ -81,6 +78,7 @@ public class RocksDBClient extends AbstractDBClient {
         LRUCache namespaceRowCache = new LRUCache(rowCacheCapacityKB * SizeUnit.KB, 10);
         
         this.readOptions.put(namespace, namespaceReadOptions);
+        this.writeOptions.put(namespace, namespaceWriteOptions);
         this.stats.put(namespace, namespaceStats);
         this.bloomFilters.put(namespace, namespaceBloomFilter);
         this.blockCaches.put(namespace, namespaceBlockCache);
@@ -92,6 +90,8 @@ public class RocksDBClient extends AbstractDBClient {
             maxWriteBuffers, writeBufferSizeKB, maxTotalWalSizeKB,
             compressionType, compactionStyle, maxBackgroundJobs
         );
+
+        setReadWriteOptions(fillReadCache, disableWAL, namespaceReadOptions, namespaceWriteOptions);
         setLSMOptions(options);
         setMemTableOptions(options);
         setTableFormatOptions(options, namespaceBloomFilter, namespaceBlockCache, namespaceBlockCacheCompressed);
@@ -184,6 +184,13 @@ public class RocksDBClient extends AbstractDBClient {
             .setCompactionStyle(compactionStyle);
     }
 
+    private void setReadWriteOptions(boolean fillReadCache, boolean disableWAL, ReadOptions namespaceReadOptions,
+            WriteOptions namespaceWriteOptions) {
+        namespaceReadOptions.setFillCache(fillReadCache);
+        namespaceReadOptions.setVerifyChecksums(false);
+        namespaceWriteOptions.setDisableWAL(disableWAL);
+    }
+
     /*
      * --rocksdb.num-levels The number of levels for the database in the LSM tree.
      * Default: 7.
@@ -241,55 +248,6 @@ public class RocksDBClient extends AbstractDBClient {
         options.setRateLimiter(rateLimiter);
     }
 
-    public void saveEntity(String namespace, String set, String entityId, Map<String, Object> fields,
-                           StorageFormat storageFormat) {
-
-        String payload = JsonUtil.write(fields);
-        payload = encode(storageFormat, payload);
-        try {
-            locks.get(namespace).writeLock().lock();
-            namespaces.get(namespace).put(
-                getKey(set, entityId).getBytes(StandardCharsets.UTF_8),
-                payload.getBytes(StandardCharsets.UTF_8)
-            );
-            locks.get(namespace).writeLock().unlock();
-        } catch (RocksDBException e) {
-            log.error("Error saving entry. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void saveEntities(String namespace, String set, Map<String, Map<String, Object>> entities,
-                             StorageFormat storageFormat) {
-
-        entities.forEach((String entityId, Map<String, Object> fields) -> {
-            saveEntity(namespace, set, entityId, fields, storageFormat);
-        });
-    }
-
-    public Map<String, Object> loadEntity(String namespace, String set, String entityId,
-                                          StorageFormat storageFormat) {
-
-        String storedPayload = null;
-        try {
-            locks.get(namespace).readLock().lock();
-            byte[] storedBytes = namespaces.get(namespace).get(
-                this.readOptions.get(namespace), getKey(set, entityId).getBytes(StandardCharsets.UTF_8)
-            );
-            locks.get(namespace).readLock().unlock();
-            storedPayload = storedBytes == null ? null : new String(storedBytes, StandardCharsets.UTF_8);
-        } catch (RocksDBException e) {
-            log.error("Error loading entry. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
-            throw new RuntimeException(e);
-        }
-        storedPayload = storedPayload == null ? null : decode(storageFormat, storedPayload);
-        return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
-    }
-
-    private String getKey(String set, String entityId) {
-        return set + "$$" + entityId;
-    }
-
     @Override
     public DBStats getStatistics() {
 
@@ -339,6 +297,22 @@ public class RocksDBClient extends AbstractDBClient {
         dbStats.add(namespace + "_" + cacheName + "_kCacheTotal", kCacheTotal / 1024L);
         // dbStats.add(namespace + "_" + cacheName + "_memUsage", namespaceCache.getUsage() / 1024L);
         // dbStats.add(namespace + "_" + cacheName + "_pinnedMemUsage", namespaceCache.getPinnedUsage() / 1024L);
+    }
+
+    protected ReentrantReadWriteLock getLock(String namespace) {
+        return this.locks.get(namespace);
+    }
+
+    protected RocksDB getDB(String namespace) {
+        return this.namespaces.get(namespace);
+    }
+
+    protected ReadOptions getReadOptions(String namespace) {
+        return this.readOptions.get(namespace);
+    }
+
+    protected WriteOptions getWriteOptions(String namespace) {
+        return this.writeOptions.get(namespace);
     }
 
     public void shutdown() {

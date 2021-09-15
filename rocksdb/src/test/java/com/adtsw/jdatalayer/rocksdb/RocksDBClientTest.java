@@ -41,11 +41,12 @@ public class RocksDBClientTest {
         int maxAllowedSpaceUsageKB = 1;
         int maxTotalWalSizeKB = 1;
 
-        RocksDBClient dbClient = new RocksDBClient(
+        RocksDBKVClient dbClient = new RocksDBKVClient(
             "/tmp", "rocksDBTest",
             blockCacheCapacityKB, blockCacheCompressedCapacityKB, rowCacheCapacityKB, rateBytesPerSecond, 
             maxWriteBuffers, writeBufferSizeKB, maxTotalWalSizeKB,
-            compressionType, compactionStyle, maxAllowedSpaceUsageKB, maxBackgroundJobs
+            compressionType, compactionStyle, maxAllowedSpaceUsageKB, maxBackgroundJobs,
+            true, true
         );
         DBAccessObject dbo = new DBAccessObject(dbClient, "rocksDBTest");
         
