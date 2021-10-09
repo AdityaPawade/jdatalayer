@@ -87,7 +87,7 @@ class Order {
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@DBEntityConfiguration(setName = "ordersSTRING", storageFormat = StorageFormat.STRING)
+@DBEntityConfiguration(name = "ordersSTRING", storageFormat = StorageFormat.STRING)
 class OrdersString implements DBEntity {
 
     @EntityId
@@ -101,7 +101,7 @@ class OrdersString implements DBEntity {
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@DBEntityConfiguration(setName = "ordersGZIP", storageFormat = StorageFormat.GZIP_WITH_BASE64)
+@DBEntityConfiguration(name = "ordersGZIP", storageFormat = StorageFormat.GZIP_WITH_BASE64)
 class OrdersGzip implements DBEntity {
 
     @EntityId
