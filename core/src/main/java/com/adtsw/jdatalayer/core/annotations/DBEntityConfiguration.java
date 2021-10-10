@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 public @interface DBEntityConfiguration {
 
-    String name();
+    String setName();
 
     StorageFormat storageFormat();
 }
