@@ -18,6 +18,9 @@ import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 
+import static com.adtsw.jdatalayer.core.utils.EncoderUtils.decode;
+import static com.adtsw.jdatalayer.core.utils.EncoderUtils.encode;
+
 public class MapDBClient extends AbstractDBClient {
 
     protected static Logger logger = LogManager.getLogger(MapDBClient.class);

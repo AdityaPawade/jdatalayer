@@ -35,7 +35,6 @@ import org.rocksdb.util.SizeUnit;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-
 public abstract class RocksDBClient extends AbstractDBClient {
 
     private final Map<String, RocksDB> namespaces;
@@ -146,7 +145,7 @@ public abstract class RocksDBClient extends AbstractDBClient {
             new SkipListMemTableConfig());
     }
 
-    /*
+    /**
      * --rocksdb.write-buffer-size The amount of data to build up in each in-memory
      * buffer (backed by a log file) before closing the buffer and queuing it to be
      * flushed into standard storage. Default: 64MiB. Larger values may improve
@@ -191,7 +190,7 @@ public abstract class RocksDBClient extends AbstractDBClient {
         namespaceWriteOptions.setDisableWAL(disableWAL);
     }
 
-    /*
+    /**
      * --rocksdb.num-levels The number of levels for the database in the LSM tree.
      * Default: 7.
      * 

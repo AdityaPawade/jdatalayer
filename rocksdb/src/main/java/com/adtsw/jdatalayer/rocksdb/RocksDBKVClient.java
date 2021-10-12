@@ -17,9 +17,11 @@ import org.rocksdb.RocksDBException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import static com.adtsw.jdatalayer.core.utils.EncoderUtils.decode;
+import static com.adtsw.jdatalayer.core.utils.EncoderUtils.encode;
+
 @Slf4j
 public class RocksDBKVClient extends RocksDBClient {
-
 
     private final Map<String, ReentrantReadWriteLock> locks;
     private final TypeReference<TreeMap<String, Object>> mapTypeReference = new TypeReference<>() {};
