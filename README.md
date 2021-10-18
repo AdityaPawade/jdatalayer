@@ -21,7 +21,7 @@ For RocksDB
 <dependency>
   <groupId>com.adtsw.jdatalayer</groupId>
   <artifactId>rocksdb</artifactId>
-  <version>1.0.8</version>
+  <version>1.0.10</version>
 </dependency>
 ```
 For MapDB
@@ -30,7 +30,7 @@ For MapDB
 <dependency>
   <groupId>com.adtsw.jdatalayer</groupId>
   <artifactId>mapdb</artifactId>
-  <version>1.0.8</version>
+  <version>1.0.10</version>
 </dependency>
 ```
 
