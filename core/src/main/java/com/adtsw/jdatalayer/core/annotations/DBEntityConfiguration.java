@@ -1,6 +1,6 @@
 package com.adtsw.jdatalayer.core.annotations;
 
-import com.adtsw.jdatalayer.core.model.StorageFormat;
+import com.adtsw.jcommons.models.EncodingFormat;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -13,5 +13,5 @@ public @interface DBEntityConfiguration {
 
     String setName();
 
-    StorageFormat storageFormat();
+    EncodingFormat encodingFormat();
 }
