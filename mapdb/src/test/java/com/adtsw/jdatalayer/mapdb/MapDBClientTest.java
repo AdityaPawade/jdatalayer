@@ -1,10 +1,10 @@
 package com.adtsw.jdatalayer.mapdb;
 
+import com.adtsw.jcommons.models.EncodingFormat;
 import com.adtsw.jdatalayer.core.accessobject.DBAccessObject;
 import com.adtsw.jdatalayer.core.annotations.DBEntityConfiguration;
 import com.adtsw.jdatalayer.core.annotations.EntityId;
 import com.adtsw.jdatalayer.core.model.DBEntity;
-import com.adtsw.jdatalayer.core.model.StorageFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -61,7 +61,7 @@ class Order {
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@DBEntityConfiguration(setName = "ordersSTRING", storageFormat = StorageFormat.STRING)
+@DBEntityConfiguration(setName = "ordersSTRING", encodingFormat = EncodingFormat.STRING)
 class OrdersString implements DBEntity {
 
     @EntityId
@@ -75,7 +75,7 @@ class OrdersString implements DBEntity {
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@DBEntityConfiguration(setName = "ordersGZIP", storageFormat = StorageFormat.GZIP_WITH_BASE64)
+@DBEntityConfiguration(setName = "ordersGZIP", encodingFormat = EncodingFormat.GZIP_WITH_BASE64)
 class OrdersGzip implements DBEntity {
 
     @EntityId

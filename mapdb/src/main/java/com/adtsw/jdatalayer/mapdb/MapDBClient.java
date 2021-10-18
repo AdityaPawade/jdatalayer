@@ -5,10 +5,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
+import com.adtsw.jcommons.models.EncodingFormat;
 import com.adtsw.jcommons.utils.JsonUtil;
 import com.adtsw.jdatalayer.core.client.AbstractDBClient;
 import com.adtsw.jdatalayer.core.client.DBStats;
-import com.adtsw.jdatalayer.core.model.StorageFormat;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.apache.logging.log4j.LogManager;
@@ -18,8 +18,8 @@ import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 
-import static com.adtsw.jdatalayer.core.utils.EncoderUtils.decode;
-import static com.adtsw.jdatalayer.core.utils.EncoderUtils.encode;
+import static com.adtsw.jcommons.utils.EncoderUtil.decode;
+import static com.adtsw.jcommons.utils.EncoderUtil.encode;
 
 public class MapDBClient extends AbstractDBClient {
 
@@ -37,19 +37,19 @@ public class MapDBClient extends AbstractDBClient {
     }
     
     public void saveEntity(String namespace, String set, String entityId, Map<String, Object> fields,
-                           StorageFormat storageFormat) {
+                           EncodingFormat encodingFormat) {
 
         BTreeMap<String, String> table = namespaces.get(namespace)
             .treeMap(set, Serializer.STRING, Serializer.STRING)
             .createOrOpen();
 
         String payload = JsonUtil.write(fields);
-        payload = encode(storageFormat, payload);
+        payload = encode(encodingFormat, payload);
         table.put(entityId, payload);
     }
 
-    public void saveEntities(String namespace, String set, Map<String, Map<String, Object>> entities, 
-                             StorageFormat storageFormat) {
+    public void saveEntities(String namespace, String set, Map<String, Map<String, Object>> entities,
+                             EncodingFormat encodingFormat) {
     
         BTreeMap<String, String> table = namespaces.get(namespace)
             .treeMap(set, Serializer.STRING, Serializer.STRING)
@@ -57,20 +57,20 @@ public class MapDBClient extends AbstractDBClient {
 
         entities.forEach((String entityId, Map<String, Object> fields) -> {
             String payload = JsonUtil.write(fields);
-            payload = encode(storageFormat, payload);
+            payload = encode(encodingFormat, payload);
             table.put(entityId, payload);
         });
     }
 
-    public Map<String, Object> loadEntity(String namespace, String set, String entityId, 
-                                          StorageFormat storageFormat) {
+    public Map<String, Object> loadEntity(String namespace, String set, String entityId,
+                                          EncodingFormat encodingFormat) {
 
         BTreeMap<String, String> table = namespaces.get(namespace)
             .treeMap(set, Serializer.STRING, Serializer.STRING)
             .createOrOpen();
 
         String storedPayload = table.get(entityId);
-        storedPayload = storedPayload == null ? null : decode(storageFormat, storedPayload);
+        storedPayload = storedPayload == null ? null : decode(encodingFormat, storedPayload);
         return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
     }
 

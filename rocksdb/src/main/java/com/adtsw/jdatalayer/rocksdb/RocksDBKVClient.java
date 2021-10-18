@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.adtsw.jcommons.models.EncodingFormat;
 import com.adtsw.jcommons.utils.JsonUtil;
-import com.adtsw.jdatalayer.core.model.StorageFormat;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.rocksdb.CompactionStyle;
@@ -17,8 +17,8 @@ import org.rocksdb.RocksDBException;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static com.adtsw.jdatalayer.core.utils.EncoderUtils.decode;
-import static com.adtsw.jdatalayer.core.utils.EncoderUtils.encode;
+import static com.adtsw.jcommons.utils.EncoderUtil.decode;
+import static com.adtsw.jcommons.utils.EncoderUtil.encode;
 
 @Slf4j
 public class RocksDBKVClient extends RocksDBClient {
@@ -42,10 +42,10 @@ public class RocksDBKVClient extends RocksDBClient {
     }
 
     public void saveEntity(String namespace, String set, String entityId, Map<String, Object> fields,
-                           StorageFormat storageFormat) {
+                           EncodingFormat encodingFormat) {
 
         String payload = JsonUtil.write(fields);
-        payload = encode(storageFormat, payload);
+        payload = encode(encodingFormat, payload);
         try {
             locks.get(namespace).writeLock().lock();
             RocksDB db = getDB(namespace);
@@ -62,15 +62,15 @@ public class RocksDBKVClient extends RocksDBClient {
     }
 
     public void saveEntities(String namespace, String set, Map<String, Map<String, Object>> entities,
-                             StorageFormat storageFormat) {
+                             EncodingFormat encodingFormat) {
 
         entities.forEach((String entityId, Map<String, Object> fields) -> {
-            saveEntity(namespace, set, entityId, fields, storageFormat);
+            saveEntity(namespace, set, entityId, fields, encodingFormat);
         });
     }
 
     public Map<String, Object> loadEntity(String namespace, String set, String entityId,
-                                          StorageFormat storageFormat) {
+                                          EncodingFormat encodingFormat) {
 
         String storedPayload = null;
         try {
@@ -84,7 +84,7 @@ public class RocksDBKVClient extends RocksDBClient {
             log.error("Error loading entry. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
             throw new RuntimeException(e);
         }
-        storedPayload = storedPayload == null ? null : decode(storageFormat, storedPayload);
+        storedPayload = storedPayload == null ? null : decode(encodingFormat, storedPayload);
         return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
     }
 
