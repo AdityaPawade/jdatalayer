@@ -17,7 +17,7 @@
 
     <groupId>com.adtsw.jdatalayer</groupId>
     <artifactId>jdatalayer</artifactId>
-    <version>1.0.10</version>
+    <version>${revision}</version>
     
     <url>github.com/AdityaPawade/jdatalayer</url>
     <scm>
@@ -49,6 +49,7 @@
         <exec-maven-plugin.version>1.4.0</exec-maven-plugin.version>
         <jackson.version>2.5.4</jackson.version>
         <jcommons.version>1.0.10</jcommons.version>
+        <revision>1.0.10</revision>
     </properties>
 
     <repositories>
