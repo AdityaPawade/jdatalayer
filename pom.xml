@@ -17,7 +17,7 @@
 
     <groupId>com.adtsw.jdatalayer</groupId>
     <artifactId>jdatalayer</artifactId>
-    <version>${revision}</version>
+    <version>1.0.11</version>
     
     <url>github.com/AdityaPawade/jdatalayer</url>
     <scm>
@@ -49,7 +49,6 @@
         <exec-maven-plugin.version>1.4.0</exec-maven-plugin.version>
         <jackson.version>2.5.4</jackson.version>
         <jcommons.version>1.0.10</jcommons.version>
-        <revision>1.0.10</revision>
     </properties>
 
     <repositories>
@@ -98,17 +97,17 @@
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>core</artifactId>
-                <version>${revision}</version>
+                <version>1.0.11</version>
             </dependency>
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>mapdb</artifactId>
-                <version>${revision}</version>
+                <version>1.0.11</version>
             </dependency>
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>rocksdb</artifactId>
-                <version>${revision}</version>
+                <version>1.0.11</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
