@@ -98,17 +98,17 @@
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>core</artifactId>
-                <version>1.0.8</version>
+                <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>mapdb</artifactId>
-                <version>1.0.8</version>
+                <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.adtsw.jdatalayer</groupId>
                 <artifactId>rocksdb</artifactId>
-                <version>1.0.8</version>
+                <version>${revision}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
