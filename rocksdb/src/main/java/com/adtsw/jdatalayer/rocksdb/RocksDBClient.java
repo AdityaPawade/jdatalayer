@@ -1,6 +1,7 @@
 package com.adtsw.jdatalayer.rocksdb;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,6 +12,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.adtsw.jdatalayer.core.client.AbstractDBClient;
 import com.adtsw.jdatalayer.core.client.DBStats;
 
+import org.apache.commons.io.FileUtils;
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.BloomFilter;
 import org.rocksdb.Cache;
@@ -37,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class RocksDBClient extends AbstractDBClient {
 
+    private final Map<String, String> baseStorageLocations;
     private final Map<String, RocksDB> namespaces;
     private final Map<String, ReentrantReadWriteLock> locks;
     private final Map<String, ReadOptions> readOptions;
@@ -53,9 +56,10 @@ public abstract class RocksDBClient extends AbstractDBClient {
                          int maxWriteBuffers, int writeBufferSizeKB, int maxTotalWalSizeKB,
                          CompressionType compressionType, CompactionStyle compactionStyle, int maxAllowedSpaceUsageKB,
                          int maxBackgroundJobs, boolean fillReadCache, boolean disableWAL) {
-        
-        RocksDB.loadLibrary();
 
+        initDB(baseStorageLocation);
+
+        this.baseStorageLocations = new HashMap<>();
         this.namespaces = new HashMap<>();
         this.locks = new HashMap<>();
         this.readOptions = new HashMap<>();
@@ -75,7 +79,8 @@ public abstract class RocksDBClient extends AbstractDBClient {
         LRUCache namespaceBlockCache = new LRUCache(blockCacheCapacityKB * SizeUnit.KB, 10);
         LRUCache namespaceBlockCacheCompressed = new LRUCache(blockCacheCompressedCapacityKB * SizeUnit.KB, 10);
         LRUCache namespaceRowCache = new LRUCache(rowCacheCapacityKB * SizeUnit.KB, 10);
-        
+
+        this.baseStorageLocations.put(namespace, baseStorageLocation);
         this.readOptions.put(namespace, namespaceReadOptions);
         this.writeOptions.put(namespace, namespaceWriteOptions);
         this.stats.put(namespace, namespaceStats);
@@ -99,13 +104,28 @@ public abstract class RocksDBClient extends AbstractDBClient {
         setRowCacheOptions(options, namespaceRowCache);
 
         try {
-            File baseDir = new File(baseStorageLocation + "/" + namespace);
+            File baseDir = new File(getNamespaceStorageLocation(baseStorageLocation, namespace));
             RocksDB defaultNamespace = RocksDB.open(options, baseDir.getAbsolutePath());
             this.namespaces.put(namespace, defaultNamespace);
             this.locks.put(namespace, new ReentrantReadWriteLock());
         } catch (RocksDBException e) {
             log.error("Error initializng RocksDB. Exception: '{}', message: '{}'", e.getCause(), e.getMessage(), e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private String getNamespaceStorageLocation(String baseStorageLocation, String namespace) {
+        return baseStorageLocation + "/" + namespace;
+    }
+
+    private void initDB(String baseStorageLocation) {
+        
+        RocksDB.loadLibrary();
+
+        try {
+            FileUtils.forceMkdir(new File(baseStorageLocation));
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to create file at location " + baseStorageLocation, e);
         }
     }
 
@@ -330,5 +350,17 @@ public abstract class RocksDBClient extends AbstractDBClient {
             }
         });
 
+    }
+
+    public void clear() {
+
+        this.baseStorageLocations.forEach((namespace, baseStorageLocation) -> {
+            String namespaceStorageLocation = getNamespaceStorageLocation(baseStorageLocation, namespace);
+            try {
+                FileUtils.deleteDirectory(new File(namespaceStorageLocation));
+            } catch (IOException e) {
+                throw new RuntimeException("Unable to delete directory at " + namespaceStorageLocation, e);
+            }
+        });
     }
 }
