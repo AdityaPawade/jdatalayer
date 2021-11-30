@@ -97,4 +97,8 @@ public class DBAccessObject {
     public void shutdown() {
         dbClient.shutdown();
     }
+    
+    public void clear() {
+        dbClient.clear();
+    }
 }
