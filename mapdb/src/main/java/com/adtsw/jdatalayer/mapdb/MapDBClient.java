@@ -15,7 +15,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
 import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
@@ -29,7 +28,7 @@ public class MapDBClient extends AbstractDBClient {
     protected static Logger logger = LogManager.getLogger(MapDBClient.class);
     
     private final Map<String, DB> namespaces;
-    private final Map<String, String> baseStorageLocations;
+    private final Map<String, String> namespaceStorageLocations;
     private final TypeReference<TreeMap<String, Object>> mapTypeReference = new TypeReference<>() {};
 
     public MapDBClient(String baseStorageLocation, String namespace) {
@@ -37,15 +36,12 @@ public class MapDBClient extends AbstractDBClient {
         initDB(baseStorageLocation);
 
         this.namespaces = new HashMap<>();
-        this.baseStorageLocations = new HashMap<>();
-        DB defaultNamespace = DBMaker.fileDB(new File(getNamespaceStorageLocation(baseStorageLocation, namespace)))
+        this.namespaceStorageLocations = new HashMap<>();
+        String namespaceStorageLocation = baseStorageLocation + "/" + namespace;
+        DB defaultNamespace = DBMaker.fileDB(new File(namespaceStorageLocation))
             .fileMmapEnable().checksumHeaderBypass().make();
         this.namespaces.put(namespace, defaultNamespace);
-        this.baseStorageLocations.put(namespace, baseStorageLocation);
-    }
-
-    private String getNamespaceStorageLocation(String baseStorageLocation, String namespace) {
-        return baseStorageLocation + "/" + namespace;
+        this.namespaceStorageLocations.put(namespace, namespaceStorageLocation);
     }
 
     private void initDB(String baseStorageLocation) {
@@ -115,8 +111,7 @@ public class MapDBClient extends AbstractDBClient {
 
     public void clear() {
 
-        this.baseStorageLocations.forEach((namespace, baseStorageLocation) -> {
-            String namespaceStorageLocation = getNamespaceStorageLocation(baseStorageLocation, namespace);
+        this.namespaceStorageLocations.forEach((namespace, namespaceStorageLocation) -> {
             try {
                 FileUtils.deleteDirectory(new File(namespaceStorageLocation));
             } catch (IOException e) {
