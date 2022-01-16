@@ -2,6 +2,7 @@ package com.adtsw.jdatalayer.rocksdb;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -86,6 +87,29 @@ public class RocksDBKVClient extends RocksDBClient {
         }
         storedPayload = storedPayload == null ? null : decode(encodingFormat, storedPayload);
         return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
+    }
+    
+    public void deleteEntity(String namespace, String set, String entityId) {
+
+        try {
+            locks.get(namespace).writeLock().lock();
+            RocksDB db = getDB(namespace);
+            db.delete(
+                getWriteOptions(namespace),
+                getKey(set, entityId).getBytes(StandardCharsets.UTF_8)
+            );
+            locks.get(namespace).writeLock().unlock();
+        } catch (RocksDBException e) {
+            log.error("Error saving entry. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void deleteEntities(String namespace, String set, List<String> entities) {
+
+        entities.forEach((String entityId) -> {
+            deleteEntity(namespace, set, entityId);
+        });
     }
 
     private String getKey(String set, String entityId) {

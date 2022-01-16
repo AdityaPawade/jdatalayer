@@ -54,11 +54,17 @@ public class RocksDBClientTest {
         dbo.saveEntity(ordersString);
         OrdersString storedOrdersString = dbo.loadEntity("u1", OrdersString.class);
         Assert.assertEquals(2, storedOrdersString.getOrderItems().size());
+        dbo.deleteEntity("u1", OrdersString.class);
+        OrdersString storedOrdersStringAfterDelete = dbo.loadEntity("u1", OrdersString.class);
+        Assert.assertNull(storedOrdersStringAfterDelete);
 
         OrdersGzip ordersGzip = new OrdersGzip("u1", orderItems);
         dbo.saveEntity(ordersGzip);
         OrdersGzip storedOrdersGzip = dbo.loadEntity("u1", OrdersGzip.class);
         Assert.assertEquals(2, storedOrdersGzip.getOrderItems().size());
+        dbo.deleteEntity("u1", OrdersGzip.class);
+        OrdersGzip storedOrdersGzipAfterDelete = dbo.loadEntity("u1", OrdersGzip.class);
+        Assert.assertNull(storedOrdersGzipAfterDelete);
         
         DBStats statistics = dbClient.getStatistics();
         statistics.getStatistics().forEach((key, value) -> {

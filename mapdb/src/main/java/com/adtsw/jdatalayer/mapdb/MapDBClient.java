@@ -3,6 +3,7 @@ package com.adtsw.jdatalayer.mapdb;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -89,6 +90,26 @@ public class MapDBClient extends AbstractDBClient {
         String storedPayload = table.get(entityId);
         storedPayload = storedPayload == null ? null : decode(encodingFormat, storedPayload);
         return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
+    }
+
+    @Override
+    public void deleteEntity(String namespace, String set, String entityId) {
+        BTreeMap<String, String> table = namespaces.get(namespace)
+            .treeMap(set, Serializer.STRING, Serializer.STRING)
+            .createOrOpen();
+
+        table.remove(entityId);
+    }
+
+    @Override
+    public void deleteEntities(String namespace, String set, List<String> entities) {
+        BTreeMap<String, String> table = namespaces.get(namespace)
+            .treeMap(set, Serializer.STRING, Serializer.STRING)
+            .createOrOpen();
+
+        entities.forEach((String entityId) -> {
+            table.remove(entityId);
+        });
     }
 
     @Override

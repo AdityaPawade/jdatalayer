@@ -74,6 +74,18 @@ public class DBAccessObject {
         return JsonUtil.convert(savedEntity, clazz);
     }
 
+    public <T extends DBEntity> void deleteEntity(String entityId, Class<T> clazz) {
+
+        DBEntityConfiguration configs = clazz.getAnnotation(DBEntityConfiguration.class);
+        dbClient.deleteEntity(namespace, configs.setName(), entityId);
+    }
+
+    public <T extends DBEntity> void deleteEntities(List<String> entityIds, Class<T> clazz) {
+
+        DBEntityConfiguration configs = clazz.getAnnotation(DBEntityConfiguration.class);
+        dbClient.deleteEntities(namespace, configs.setName(), entityIds);
+    }
+
     private String getEntityId(DBEntity entity) throws IllegalAccessException {
 
         List<Field> idFields = FieldUtils.getFieldsListWithAnnotation(entity.getClass(), EntityId.class);
