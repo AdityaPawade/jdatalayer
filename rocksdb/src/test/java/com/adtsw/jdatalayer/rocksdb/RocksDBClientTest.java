@@ -18,6 +18,7 @@ import org.rocksdb.CompressionType;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public class RocksDBClientTest {
 
@@ -52,18 +53,30 @@ public class RocksDBClientTest {
         
         OrdersString ordersString = new OrdersString("u1", orderItems);
         dbo.saveEntity(ordersString);
+        OrdersString orders2String = new OrdersString("u2", orderItems);
+        dbo.saveEntity(orders2String);
+
+        Set<String> allEntityIds = dbo.getAllEntityIds(OrdersString.class);
+        Assert.assertEquals(2, allEntityIds.size());
+
         OrdersString storedOrdersString = dbo.loadEntity("u1", OrdersString.class);
         Assert.assertEquals(2, storedOrdersString.getOrderItems().size());
         dbo.deleteEntity("u1", OrdersString.class);
         OrdersString storedOrdersStringAfterDelete = dbo.loadEntity("u1", OrdersString.class);
         Assert.assertNull(storedOrdersStringAfterDelete);
 
-        OrdersGzip ordersGzip = new OrdersGzip("u1", orderItems);
+        OrdersGzip ordersGzip = new OrdersGzip("u3", orderItems);
         dbo.saveEntity(ordersGzip);
-        OrdersGzip storedOrdersGzip = dbo.loadEntity("u1", OrdersGzip.class);
+
+        allEntityIds = dbo.getAllEntityIds(OrdersString.class);
+        Assert.assertEquals(1, allEntityIds.size());
+        allEntityIds = dbo.getAllEntityIds(OrdersGzip.class);
+        Assert.assertEquals(1, allEntityIds.size());
+
+        OrdersGzip storedOrdersGzip = dbo.loadEntity("u3", OrdersGzip.class);
         Assert.assertEquals(2, storedOrdersGzip.getOrderItems().size());
-        dbo.deleteEntity("u1", OrdersGzip.class);
-        OrdersGzip storedOrdersGzipAfterDelete = dbo.loadEntity("u1", OrdersGzip.class);
+        dbo.deleteEntity("u3", OrdersGzip.class);
+        OrdersGzip storedOrdersGzipAfterDelete = dbo.loadEntity("u3", OrdersGzip.class);
         Assert.assertNull(storedOrdersGzipAfterDelete);
         
         DBStats statistics = dbClient.getStatistics();

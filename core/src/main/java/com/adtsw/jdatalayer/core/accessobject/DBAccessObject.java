@@ -1,22 +1,25 @@
 package com.adtsw.jdatalayer.core.accessobject;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
 import com.adtsw.jcommons.utils.JsonUtil;
 import com.adtsw.jdatalayer.core.annotations.DBEntityConfiguration;
 import com.adtsw.jdatalayer.core.annotations.EntityId;
 import com.adtsw.jdatalayer.core.client.IDBClient;
 import com.adtsw.jdatalayer.core.model.DBEntity;
 import com.fasterxml.jackson.core.type.TypeReference;
-import lombok.AllArgsConstructor;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 public class DBAccessObject {
@@ -84,6 +87,11 @@ public class DBAccessObject {
 
         DBEntityConfiguration configs = clazz.getAnnotation(DBEntityConfiguration.class);
         dbClient.deleteEntities(namespace, configs.setName(), entityIds);
+    }
+
+    public <T extends DBEntity> Set<String> getAllEntityIds(Class<T> clazz) {
+        DBEntityConfiguration configs = clazz.getAnnotation(DBEntityConfiguration.class);
+        return dbClient.getAllEntityIds(namespace, configs.setName());
     }
 
     private String getEntityId(DBEntity entity) throws IllegalAccessException {

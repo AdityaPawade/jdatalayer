@@ -1,9 +1,10 @@
 package com.adtsw.jdatalayer.core.client;
 
-import com.adtsw.jcommons.models.EncodingFormat;
-
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import com.adtsw.jcommons.models.EncodingFormat;
 
 public interface IDBClient {
 
@@ -18,6 +19,8 @@ public interface IDBClient {
     void deleteEntity(String namespace, String set, String entityId);
 
     void deleteEntities(String namespace, String set, List<String> entities);
+
+    Set<String> getAllEntityIds(String namespace, String set);
 
     DBStats getStatistics();
     

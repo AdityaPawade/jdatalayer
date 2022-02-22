@@ -1,4 +1,4 @@
-# Java Data Layer  [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/com.adtsw/jdatalayer?color=blue&label=Version) ![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/com.adtsw/jdatalayer?label=Snapshot&server=https%3A%2F%2Foss.sonatype.org%2F)
+# Java Data Layer  [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/com.adtsw.jdatalayer/rocksdb?color=blue&label=Version) ![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/com.adtsw.jdatalayer/rocksdb?label=Snapshot&server=https%3A%2F%2Foss.sonatype.org%2F)
 
 
 ***Connectors for common java projects***
@@ -21,7 +21,7 @@ For RocksDB
 <dependency>
   <groupId>com.adtsw.jdatalayer</groupId>
   <artifactId>rocksdb</artifactId>
-  <version>1.0.13</version>
+  <version>1.0.14</version>
 </dependency>
 ```
 For MapDB
@@ -30,7 +30,7 @@ For MapDB
 <dependency>
   <groupId>com.adtsw.jdatalayer</groupId>
   <artifactId>mapdb</artifactId>
-  <version>1.0.13</version>
+  <version>1.0.14</version>
 </dependency>
 ```
 

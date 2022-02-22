@@ -1,9 +1,14 @@
 package com.adtsw.jdatalayer.rocksdb;
 
+import static com.adtsw.jcommons.utils.EncoderUtil.decode;
+import static com.adtsw.jcommons.utils.EncoderUtil.encode;
+
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -11,15 +16,15 @@ import com.adtsw.jcommons.models.EncodingFormat;
 import com.adtsw.jcommons.utils.JsonUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 
+import org.apache.commons.lang3.StringUtils;
+import org.javatuples.Pair;
 import org.rocksdb.CompactionStyle;
 import org.rocksdb.CompressionType;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 import lombok.extern.slf4j.Slf4j;
-
-import static com.adtsw.jcommons.utils.EncoderUtil.decode;
-import static com.adtsw.jcommons.utils.EncoderUtil.encode;
 
 @Slf4j
 public class RocksDBKVClient extends RocksDBClient {
@@ -42,6 +47,7 @@ public class RocksDBKVClient extends RocksDBClient {
         this.locks.put(namespace, new ReentrantReadWriteLock());
     }
 
+    @Override
     public void saveEntity(String namespace, String set, String entityId, Map<String, Object> fields,
                            EncodingFormat encodingFormat) {
 
@@ -62,6 +68,7 @@ public class RocksDBKVClient extends RocksDBClient {
         }
     }
 
+    @Override
     public void saveEntities(String namespace, String set, Map<String, Map<String, Object>> entities,
                              EncodingFormat encodingFormat) {
 
@@ -70,6 +77,7 @@ public class RocksDBKVClient extends RocksDBClient {
         });
     }
 
+    @Override
     public Map<String, Object> loadEntity(String namespace, String set, String entityId,
                                           EncodingFormat encodingFormat) {
 
@@ -89,6 +97,7 @@ public class RocksDBKVClient extends RocksDBClient {
         return storedPayload == null ? null : JsonUtil.read(storedPayload, mapTypeReference);
     }
     
+    @Override
     public void deleteEntity(String namespace, String set, String entityId) {
 
         try {
@@ -105,6 +114,7 @@ public class RocksDBKVClient extends RocksDBClient {
         }
     }
 
+    @Override
     public void deleteEntities(String namespace, String set, List<String> entities) {
 
         entities.forEach((String entityId) -> {
@@ -112,7 +122,36 @@ public class RocksDBKVClient extends RocksDBClient {
         });
     }
 
+    @Override
+    public Set<String> getAllEntityIds(String namespace, String set) {
+
+        Set<String> keys = new HashSet<String>();
+        try {
+            locks.get(namespace).writeLock().lock();
+            RocksIterator itr = getDB(namespace).newIterator(getReadOptions(namespace));
+            itr.seekToFirst();
+            while (itr.isValid()) {
+                byte[] storedBytes = itr.key();
+                Pair<String, String> setWithEntityId = getEntityIdDetails(new String(storedBytes, StandardCharsets.UTF_8));
+                if(StringUtils.equals(setWithEntityId.getValue0(), set)) {
+                    keys.add(setWithEntityId.getValue1());
+                }
+                itr.next();
+            }
+            locks.get(namespace).writeLock().unlock();
+        } catch (Exception e) {
+            log.error("Error getting all entries. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return keys;
+    }
+
     private String getKey(String set, String entityId) {
         return set + "$$" + entityId;
+    }
+
+    private Pair<String, String> getEntityIdDetails(String storedKey) {
+        String[] splits = storedKey.split("\\$\\$");
+        return new Pair<>(splits[0], splits[1]);
     }
 }

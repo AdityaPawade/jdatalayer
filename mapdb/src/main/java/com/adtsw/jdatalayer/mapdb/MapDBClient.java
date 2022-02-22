@@ -1,10 +1,15 @@
 package com.adtsw.jdatalayer.mapdb;
 
+import static com.adtsw.jcommons.utils.EncoderUtil.decode;
+import static com.adtsw.jcommons.utils.EncoderUtil.encode;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import com.adtsw.jcommons.models.EncodingFormat;
@@ -20,9 +25,6 @@ import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
-
-import static com.adtsw.jcommons.utils.EncoderUtil.decode;
-import static com.adtsw.jcommons.utils.EncoderUtil.encode;
 
 public class MapDBClient extends AbstractDBClient {
 
@@ -110,6 +112,21 @@ public class MapDBClient extends AbstractDBClient {
         entities.forEach((String entityId) -> {
             table.remove(entityId);
         });
+    }
+
+    public Set<String> getAllEntityIds(String namespace, String set) {
+
+        Set<String> entityIds = new HashSet<>();
+
+        BTreeMap<String, String> table = namespaces.get(namespace)
+            .treeMap(set, Serializer.STRING, Serializer.STRING)
+            .createOrOpen();
+
+        table.getKeys().forEach(key -> {
+            entityIds.add(key);
+        });
+
+        return entityIds;
     }
 
     @Override
