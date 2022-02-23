@@ -5,11 +5,10 @@ import static com.adtsw.jcommons.utils.EncoderUtil.encode;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 import com.adtsw.jcommons.models.EncodingFormat;
@@ -114,9 +113,10 @@ public class MapDBClient extends AbstractDBClient {
         });
     }
 
-    public Set<String> getAllEntityIds(String namespace, String set) {
+    @Override
+    public List<String> getAllEntityIds(String namespace, String set) {
 
-        Set<String> entityIds = new HashSet<>();
+        List<String> entityIds = new ArrayList<>();
 
         BTreeMap<String, String> table = namespaces.get(namespace)
             .treeMap(set, Serializer.STRING, Serializer.STRING)

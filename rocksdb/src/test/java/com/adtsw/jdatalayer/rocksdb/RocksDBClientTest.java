@@ -56,7 +56,7 @@ public class RocksDBClientTest {
         OrdersString orders2String = new OrdersString("u2", orderItems);
         dbo.saveEntity(orders2String);
 
-        Set<String> allEntityIds = dbo.getAllEntityIds(OrdersString.class);
+        List<String> allEntityIds = dbo.getAllEntityIds(OrdersString.class);
         Assert.assertEquals(2, allEntityIds.size());
 
         OrdersString storedOrdersString = dbo.loadEntity("u1", OrdersString.class);

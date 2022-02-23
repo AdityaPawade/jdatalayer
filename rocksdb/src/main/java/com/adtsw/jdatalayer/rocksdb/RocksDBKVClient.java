@@ -4,11 +4,10 @@ import static com.adtsw.jcommons.utils.EncoderUtil.decode;
 import static com.adtsw.jcommons.utils.EncoderUtil.encode;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -123,9 +122,9 @@ public class RocksDBKVClient extends RocksDBClient {
     }
 
     @Override
-    public Set<String> getAllEntityIds(String namespace, String set) {
+    public List<String> getAllEntityIds(String namespace, String set) {
 
-        Set<String> keys = new HashSet<String>();
+        List<String> keys = new ArrayList<>();
         try {
             locks.get(namespace).writeLock().lock();
             RocksIterator itr = getDB(namespace).newIterator(getReadOptions(namespace));
@@ -134,7 +133,8 @@ public class RocksDBKVClient extends RocksDBClient {
                 byte[] storedBytes = itr.key();
                 Pair<String, String> setWithEntityId = getEntityIdDetails(new String(storedBytes, StandardCharsets.UTF_8));
                 if(StringUtils.equals(setWithEntityId.getValue0(), set)) {
-                    keys.add(setWithEntityId.getValue1());
+                    String entityId = setWithEntityId.getValue1();
+                    keys.add(entityId);
                 }
                 itr.next();
             }

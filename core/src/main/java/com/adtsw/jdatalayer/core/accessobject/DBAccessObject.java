@@ -5,7 +5,6 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 import com.adtsw.jcommons.utils.JsonUtil;
@@ -89,7 +88,7 @@ public class DBAccessObject {
         dbClient.deleteEntities(namespace, configs.setName(), entityIds);
     }
 
-    public <T extends DBEntity> Set<String> getAllEntityIds(Class<T> clazz) {
+    public <T extends DBEntity> List<String> getAllEntityIds(Class<T> clazz) {
         DBEntityConfiguration configs = clazz.getAnnotation(DBEntityConfiguration.class);
         return dbClient.getAllEntityIds(namespace, configs.setName());
     }
