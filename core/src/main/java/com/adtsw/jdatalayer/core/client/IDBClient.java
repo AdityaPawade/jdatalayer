@@ -22,6 +22,8 @@ public interface IDBClient {
 
     List<String> getIds(String namespace, String set);
 
+    List<String> getIds(String namespace);
+
     DBStats getStatistics();
     
     void shutdown();

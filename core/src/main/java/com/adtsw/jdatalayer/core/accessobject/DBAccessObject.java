@@ -90,6 +90,10 @@ public class DBAccessObject {
         dbClient.delete(namespace, configs.setName(), entityIds);
     }
 
+    public <T extends DBEntity> List<String> getIds() {
+        return dbClient.getIds(namespace);
+    }
+
     public <T extends DBEntity> List<String> getIds(Class<T> clazz) {
         DBEntityConfiguration configs = clazz.getAnnotation(DBEntityConfiguration.class);
         return dbClient.getIds(namespace, configs.setName());

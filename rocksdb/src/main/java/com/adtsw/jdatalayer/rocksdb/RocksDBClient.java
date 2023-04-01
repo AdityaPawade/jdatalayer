@@ -244,7 +244,9 @@ public abstract class RocksDBClient extends AbstractDBClient {
             .setMaxTotalWalSize(maxTotalWalSizeKB * SizeUnit.KB)
             .setMaxBackgroundJobs(maxBackgroundJobs)
             .setCompressionType(compressionType)
-            .setCompactionStyle(compactionStyle);
+            .setCompactionStyle(compactionStyle)
+            .setMaxLogFileSize(10485760) // 10 * 1024 * 1024 = 10 MB
+            .setKeepLogFileNum(2);
     }
 
     private void setReadWriteOptions(ReadOptions namespaceReadOptions, WriteOptions namespaceWriteOptions, 

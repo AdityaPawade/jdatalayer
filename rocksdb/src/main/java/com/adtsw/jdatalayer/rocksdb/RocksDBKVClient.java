@@ -150,6 +150,30 @@ public class RocksDBKVClient extends RocksDBClient {
         return keys;
     }
 
+    @Override
+    public List<String> getIds(String namespace) {
+
+        List<String> keys = new ArrayList<>();
+        try {
+            ReadLock readLock = getLock(namespace).readLock();
+            readLock.lock();
+            assertDBOpen(namespace);
+            RocksIterator itr = getDB(namespace).newIterator(getReadOptions(namespace));
+            itr.seekToFirst();
+            while (itr.isValid()) {
+                byte[] storedBytes = itr.key();
+                String storedKey = new String(storedBytes, StandardCharsets.UTF_8);
+                keys.add(storedKey);
+                itr.next();
+            }
+            readLock.unlock();
+        } catch (Exception e) {
+            log.error("Error getting all entries. Cause: '{}', message: '{}'", e.getCause(), e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return keys;
+    }
+
     private String getKey(String set, String entityId) {
         return set + "$$" + entityId;
     }

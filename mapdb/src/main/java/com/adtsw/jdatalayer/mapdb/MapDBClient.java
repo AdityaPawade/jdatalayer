@@ -130,6 +130,11 @@ public class MapDBClient extends AbstractDBClient {
     }
 
     @Override
+    public List<String> getIds(String namespace) {
+        throw new UnsupportedOperationException("Get all ids not supported by MapDBClient");
+    }
+
+    @Override
     public DBStats getStatistics() {
 
         DBStats dbStats = new DBStats();
